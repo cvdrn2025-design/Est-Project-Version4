@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Aplikasi Cepat Akurat untuk Estimator</title>
+  <link rel="icon" id="favicon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,'Helvetica Neue',sans-serif; }
+    body { background:#f0f4f8; display:flex; justify-content:center; padding:2rem 1rem; min-height:100vh; }
+    .container { max-width:1100px; width:100%; background:white; border-radius:1.5rem; box-shadow:0 20px 40px rgba(0,0,0,0.08); padding:2rem 2rem 2.5rem; }
+    h1 { display:flex; align-items:center; gap:0.8rem; font-size:1.8rem; color:#1e293b; margin-bottom:0.3rem; flex-wrap:wrap; }
+    .notification { padding:0.8rem 1rem; margin-bottom:1.2rem; border-radius:0.7rem; font-weight:500; display:none; background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+    .notification.error { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
+    .project-info { display:flex; flex-wrap:wrap; gap:1.2rem; margin-bottom:2rem; background:#f8fafc; padding:1.2rem; border-radius:1rem; }
+    .project-info label { display:flex; flex-direction:column; font-size:0.85rem; font-weight:600; color:#334155; gap:0.3rem; flex:1 1 200px; }
+    input, select { padding:0.7rem 1rem; border:1px solid #cbd5e1; border-radius:0.7rem; font-size:0.95rem; background:white; transition:0.15s; }
+    input:focus, select:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.15); }
+    .item-table-wrapper { overflow-x:auto; margin:1.5rem 0 1rem; }
+    table { width:100%; border-collapse:collapse; font-size:0.9rem; }
+    th { background:#f1f5f9; padding:0.8rem 0.6rem; text-align:left; font-weight:600; color:#0f172a; border-bottom:2px solid #e2e8f0; }
+    td { padding:0.5rem 0.4rem; border-bottom:1px solid #e2e8f0; vertical-align:middle; }
+    td input { width:100%; padding:0.5rem; border:1px solid #e2e8f0; border-radius:0.5rem; font-size:0.85rem; background:#ffffff; }
+    .total-cell { font-weight:600; color:#0f172a; background:#f9fafb; }
+    .btn { background:white; border:1px solid #cbd5e1; padding:0.5rem 1rem; border-radius:0.6rem; font-weight:500; cursor:pointer; transition:0.15s; font-size:0.85rem; display:inline-flex; align-items:center; gap:0.3rem; }
+    .btn-primary { background:#2563eb; border-color:#2563eb; color:white; }
+    .btn-primary:hover { background:#1d4ed8; }
+    .btn-outline:hover { background:#f1f5f9; }
+    .btn-danger { background:#fee2e2; border-color:#fecaca; color:#b91c1c; }
+    .btn-danger:hover { background:#fecaca; }
+    .actions { display:flex; flex-wrap:wrap; gap:0.5rem; margin:0.8rem 0 1rem; align-items:center; }
+    .save-load-actions { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1.5rem; }
+    .summary { background:#f8fafc; border-radius:1rem; padding:1.5rem; display:flex; flex-wrap:wrap; gap:2rem; margin:1.2rem 0 1.8rem; }
+    .summary-left { flex:2; min-width:250px; display:flex; flex-direction:column; gap:0.8rem; }
+    .summary-right { flex:1.2; min-width:220px; display:flex; flex-direction:column; gap:0.8rem; }
+    .summary-row { display:flex; justify-content:space-between; font-size:0.95rem; padding:0.3rem 0; border-bottom:1px dashed #d1d5db; }
+    .summary-row.total { font-weight:700; font-size:1.2rem; border-bottom:none; color:#0f172a; background:#e0e7ff; padding:0.6rem 1rem; border-radius:0.7rem; }
+    .summary input { width:100px; text-align:right; padding:0.4rem; }
+    .print-area { display:none; }
+    @media print { body { background:white; padding:0; } .container { box-shadow:none; padding:1rem; } .no-print { display:none !important; } .print-area { display:block; } }
+    .footer-note { font-size:0.8rem; color:#64748b; margin-top:1rem; }
+    .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(15,23,42,0.6); display:none; justify-content:center; align-items:center; z-index:1000; padding:1rem; }
+    .modal-overlay.active { display:flex; }
+    .modal { background:white; border-radius:1.2rem; max-width:900px; width:100%; max-height:90vh; overflow-y:auto; padding:1.8rem; box-shadow:0 25px 50px rgba(0,0,0,0.2); }
+    .modal h3 { display:flex; align-items:center; gap:0.5rem; margin-bottom:1.2rem; color:#1e293b; }
+    .ahs-row { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.2rem; align-items:flex-end; }
+    .ahs-row label { display:flex; flex-direction:column; font-size:0.8rem; font-weight:600; color:#334155; gap:0.2rem; }
+    .ahs-row select, .ahs-row input { width:180px; }
+    .price-table th { background:#e2e8f0; }
+    .modal-footer { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem; }
+    #logoImage { max-height:150px; max-width:450px; object-fit:contain; }
+    .tagline-box { display:flex; flex-direction:column; align-items:center; justify-content:center; margin-left:0.5rem; text-align:center; }
+    .tagline-box span { font-style:italic; font-weight:600; background:linear-gradient(to right,#2563eb,#3b82f6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-shadow:1px 1px 2px rgba(0,0,0,0.1); line-height:1.3; }
+    .tagline-line1 { font-size:0.9rem; }
+    .tagline-line2 { font-size:1.1rem; font-weight:700; }
+    .tagline-line3 { font-size:0.9rem; }
+    .search-box { position:relative; display:flex; align-items:center; gap:0.5rem; }
+    .search-box input { width:200px; }
+    #ahsItemSelect { width:100%; max-height:200px; }
+    
+    /* Panel Harga Tambahan */
+    .price-panel { margin-top: 1.5rem; padding: 1.2rem; background: #f8fafc; border-radius: 1rem; border: 1px solid #e2e8f0; }
+    .price-panel h3 { display:flex; align-items:center; gap:0.5rem; font-size:1.1rem; color:#1e293b; margin-bottom:0.8rem; }
+    .price-panel-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+    .price-card { background: white; border-radius: 0.8rem; border: 1px solid #cbd5e1; padding: 1rem; max-height: 320px; display:flex; flex-direction:column; overflow:hidden; }
+    .price-card h4 { flex-shrink:0; font-size: 0.95rem; margin-bottom: 0.5rem; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3rem; overflow:auto; }
+    .price-search { flex-shrink:0; width:100%; margin-bottom:0.6rem; padding:0.5rem 0.7rem; font-size:0.8rem; border:1px solid #cbd5e1; border-radius:0.5rem; }
+    .price-card-scroll { overflow-y: auto; flex:1; min-height:0; }
+    .price-card table { width: 100%; font-size: 0.82rem; }
+    .price-card th { padding: 0.4rem; background: #f1f5f9; position: sticky; top: 0; z-index: 1; }
+    .price-card td { padding: 0.3rem 0.4rem; }
+    .price-card input { padding: 0.3rem 0.5rem; font-size: 0.8rem; border-radius: 0.4rem; }
+  </style>
+</head>
+<body>
+<div class="container" id="appContainer">
+  <h1>Aplikasi Cepat Akurat untuk Estimator
+    <img id="logoImage" src="" alt="Logo SiCerMat" style="display:none;">
+    <div class="tagline-box"><span class="tagline-line1">Membuat RAB</span><span class="tagline-line2">Cepat & Akurat</span><span class="tagline-line3">Menyenangkan</span></div>
+  </h1>
+  <div id="notification" class="notification"></div>
+  <div class="project-info no-print" style="align-items:flex-end;">
+    <label>🗂️ Proyek Tersimpan <select id="projectSelector"></select></label>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+      <button class="btn btn-outline" id="newProjectBtn">➕ Proyek Baru</button>
+      <button class="btn btn-outline" id="renameProjectBtn">✏️ Ganti Nama</button>
+      <button class="btn btn-danger" id="deleteProjectBtn">🗑️ Hapus Proyek</button>
+    </div>
+  </div>
+  <div class="project-info">
+    <label>📋 Nama Proyek <input type="text" id="projectName" value="Proyek Baru"></label>
+    <label>🏷️ Jenis Proyek <select id="projectType"><option value="Konstruksi">Konstruksi</option><option value="Renovasi">Renovasi</option><option value="Lainnya">Lainnya</option></select></label>
+    <label>📅 Tanggal <input type="date" id="estimateDate"></label>
+  </div>
+  <div><h3>📌 Daftar Item Pekerjaan / Material</h3></div>
+  <div class="item-table-wrapper">
+    <table id="itemTable"><thead><tr><th style="width:30%">Deskripsi</th><th style="width:10%">Kuantitas</th><th style="width:12%">Satuan</th><th style="width:18%">Harga Satuan (Rp)</th><th style="width:18%">Total (Rp)</th><th style="width:8%"></th></tr></thead><tbody id="itemBody"></tbody></table>
+  </div>
+  <div class="actions no-print">
+    <button class="btn btn-primary" id="addItemBtn">➕ Tambah Item</button>
+    <button class="btn btn-outline" id="openAHSBtn">📚 Library AHS</button>
+    <button class="btn btn-outline" id="clearItemsBtn">🗑️ Hapus Semua</button>
+  </div>
+  <div class="save-load-actions no-print">
+    <button class="btn btn-outline" id="saveLocalBtn">💾 Save</button>
+    <button class="btn btn-outline" id="saveAsBtn">💾 Save As</button>
+    <button class="btn btn-outline" id="openFileBtn">📂 Open</button>
+    <input type="file" id="openFileInput" accept=".json" style="display:none;">
+    <button class="btn btn-outline" id="exportCsvBtn">📥 Export CSV</button>
+    <button class="btn btn-outline" id="exportExcelBtn">📊 Export Excel</button>
+    <button class="btn btn-outline" id="exportPdfBtn">📄 Export PDF</button>
+    <button class="btn btn-outline" id="logoutBtn" style="margin-left:auto;">🔒 Logout</button>
+  </div>
+  <div class="summary">
+    <div class="summary-left"><div class="summary-row"><span>Subtotal</span><strong id="subtotalDisplay">Rp 0</strong></div><div class="summary-row"><span>Biaya Tambahan (%)</span><span><input type="number" id="additionalPercent" value="0" min="0" max="100" step="0.5" style="width:70px;"> %</span></div><div class="summary-row"><span>Pajak (%)</span><span><input type="number" id="taxPercent" value="11" min="0" max="100" step="0.5" style="width:70px;"> %</span></div><div class="summary-row"><span>Margin (%)</span><span><input type="number" id="profitMargin" value="10" min="0" max="100" step="0.5" style="width:70px;"> %</span></div></div>
+    <div class="summary-right"><div class="summary-row"><span>Biaya Tambahan</span><strong id="additionalAmount">Rp 0</strong></div><div class="summary-row"><span>Pajak</span><strong id="taxAmount">Rp 0</strong></div><div class="summary-row"><span>Keuntungan</span><strong id="profitAmount">Rp 0</strong></div><div class="summary-row total"><span>💰 TOTAL</span><strong id="grandTotalDisplay">Rp 0</strong></div></div>
+  </div>
+
+  <!-- PANEL HARGA STANDAR (BAHAN, ALAT, UPAH) -->
+  <div class="price-panel no-print">
+    <h3>📊 Panel Pengaturan Harga Dasar</h3>
+    <div class="price-panel-grid">
+      <!-- Panel Bahan -->
+      <div class="price-card">
+        <h4>🧱 Daftar Harga Bahan
+          <button class="btn btn-outline" id="importBahanBtn" style="float:right;padding:0.25rem 0.6rem;font-size:0.75rem;">📥 Import</button>
+          <button class="btn btn-primary" id="addBahanBtn" style="float:right;padding:0.25rem 0.6rem;font-size:0.75rem;margin-right:0.4rem;">➕ Bahan</button>
+          <input type="file" id="importBahanInput" accept=".csv,.xlsx,.xls" style="display:none;">
+        </h4>
+        <input type="text" id="searchBahanInput" class="price-search" placeholder="🔍 Ketik kata kunci untuk cari bahan...">
+        <div class="price-card-scroll">
+          <table>
+            <thead><tr><th>Nama Bahan</th><th style="width:110px;">Harga (Rp)</th></tr></thead>
+            <tbody id="panelBahanBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Panel Alat -->
+      <div class="price-card">
+        <h4>🚜 Daftar Harga Alat
+          <button class="btn btn-outline" id="importAlatBtn" style="float:right;padding:0.25rem 0.6rem;font-size:0.75rem;">📥 Import</button>
+          <button class="btn btn-primary" id="addAlatBtn" style="float:right;padding:0.25rem 0.6rem;font-size:0.75rem;margin-right:0.4rem;">➕ Alat</button>
+          <input type="file" id="importAlatInput" accept=".csv,.xlsx,.xls" style="display:none;">
+        </h4>
+        <input type="text" id="searchAlatInput" class="price-search" placeholder="🔍 Ketik kata kunci untuk cari alat...">
+        <div class="price-card-scroll">
+          <table>
+            <thead><tr><th>Nama Alat</th><th style="width:110px;">Harga (Rp)</th></tr></thead>
+            <tbody id="panelAlatBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Panel Upah -->
+      <div class="price-card">
+        <h4>👷 Daftar Harga Upah
+          <button class="btn btn-outline" id="importUpahBtn" style="float:right;padding:0.25rem 0.6rem;font-size:0.75rem;">📥 Import</button>
+          <button class="btn btn-primary" id="addUpahBtn" style="float:right;padding:0.25rem 0.6rem;font-size:0.75rem;margin-right:0.4rem;">➕ Upah</button>
+          <input type="file" id="importUpahInput" accept=".csv,.xlsx,.xls" style="display:none;">
+        </h4>
+        <input type="text" id="searchUpahInput" class="price-search" placeholder="🔍 Ketik kata kunci untuk cari tenaga kerja...">
+        <div class="price-card-scroll">
+          <table>
+            <thead><tr><th>Tenaga Kerja</th><th style="width:110px;">Harga (Rp)</th></tr></thead>
+            <tbody id="panelUpahBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="footer-note" style="width:100%;">* Format import: kolom 1 = Nama, kolom 2 = Harga (baris pertama boleh header). File .csv atau .xlsx.</p>
+    </div>
+  </div>
+
+  <div class="actions no-print" style="justify-content:flex-end; margin-top:1.5rem;"><button class="btn btn-outline" id="printBtn">🖨️ Cetak</button><button class="btn btn-primary" id="refreshBtn">🔄 Hitung Ulang</button></div>
+  <div class="footer-note no-print">* Gunakan Library AHS atau sesuaikan harga dasar pada panel di atas.</div>
+  <div class="print-area" id="printArea"></div>
+</div>
+
+<div class="modal-overlay" id="ahsModalOverlay">
+  <div class="modal">
+    <h3>📚 Library Analisa Harga Satuan</h3>
+    <div class="ahs-row"><label>Kategori <select id="ahsKategoriSelect"></select></label><div class="search-box"><label>Item Pekerjaan <input type="text" id="ahsSearchInput" placeholder="Cari item..." style="width:200px;"></label></div><label>Volume <input type="number" id="ahsVolume" value="1" min="0" step="any" style="width:120px;"></label><span style="align-self:center;font-weight:500;" id="ahsSatuanSpan">m2</span></div>
+    <div class="ahs-row"><select id="ahsItemSelect" size="10" style="width:100%;height:200px;"></select></div>
+    <div style="display:flex;gap:2rem;flex-wrap:wrap;margin:1rem 0;"><div style="flex:1;min-width:250px;"><h4>🧱 Bahan / Material</h4><table class="price-table" style="font-size:0.8rem;"><thead><tr><th>Nama</th><th>Koef</th><th>Satuan</th><th>Harga (Rp)</th></tr></thead><tbody id="ahsBahanBody"></tbody></table></div><div style="flex:1;min-width:250px;"><h4>👷 Tenaga Kerja / Alat</h4><table class="price-table" style="font-size:0.8rem;"><thead><tr><th>Nama</th><th>Koef</th><th>Satuan</th><th>Harga (Rp)</th></tr></thead><tbody id="ahsTenagaBody"></tbody></table></div></div>
+    <div style="background:#f1f5f9;padding:0.8rem;border-radius:0.7rem;display:flex;justify-content:space-between;"><strong>Biaya per <span id="ahsUnitLabel">m2</span></strong><strong id="ahsUnitCost">Rp 0</strong></div>
+    <div style="margin-top:0.5rem;font-size:0.9rem;display:flex;justify-content:space-between;"><span>Total Biaya (volume x satuan)</span><strong id="ahsTotalCost">Rp 0</strong></div>
+    <div class="modal-footer"><button class="btn btn-outline" id="closeAHSBtn">Tutup</button><button class="btn btn-primary" id="addAHSToProjectBtn">➕ Tambahkan ke Proyek</button></div>
+    <small style="color:#64748b;">* Ubah harga langsung, tersimpan otomatis di browser.</small>
+  </div>
+</div>
+
+<script>
+(function() {
+const AHS = [
+  { id:1, kat:"Pekerjaan Finishing", nama:"Pasangan Bata Merah", sat:"m2", bahan:[{n:"Bata merah",s:"buah",k:70},{n:"Semen",s:"kg",k:11.5},{n:"Pasir pasang",s:"m3",k:0.043}], tenaga:[{n:"Pekerja",s:"OH",k:0.3},{n:"Tukang batu",s:"OH",k:0.1},{n:"Kepala tukang",s:"OH",k:0.01},{n:"Mandor",s:"OH",k:0.015}] },
+  { id:2, kat:"Pekerjaan Finishing", nama:"Pasangan Bata Ringan", sat:"m2", bahan:[{n:"Bata ringan",s:"buah",k:8.5},{n:"Mortar instan",s:"kg",k:5}], tenaga:[{n:"Pekerja",s:"OH",k:0.25},{n:"Tukang batu",s:"OH",k:0.125},{n:"Kepala tukang",s:"OH",k:0.0125},{n:"Mandor",s:"OH",k:0.00625}] },
+  { id:3, kat:"Pekerjaan Finishing", nama:"Pasangan Batako", sat:"m2", bahan:[{n:"Batako",s:"buah",k:12.5},{n:"Semen",s:"kg",k:6},{n:"Pasir pasang",s:"m3",k:0.025}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.1},{n:"Kepala tukang",s:"OH",k:0.01},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:4, kat:"Pekerjaan Finishing", nama:"Pasangan Rollag Bata Merah", sat:"m2", bahan:[{n:"Bata merah",s:"buah",k:80},{n:"Semen",s:"kg",k:15},{n:"Pasir pasang",s:"m3",k:0.05}], tenaga:[{n:"Pekerja",s:"OH",k:0.4},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:5, kat:"Pekerjaan Finishing", nama:"Pasangan Bata Merah Trasraam", sat:"m2", bahan:[{n:"Bata merah",s:"buah",k:70},{n:"Semen",s:"kg",k:18},{n:"Pasir pasang",s:"m3",k:0.038}], tenaga:[{n:"Pekerja",s:"OH",k:0.35},{n:"Tukang batu",s:"OH",k:0.15},{n:"Kepala tukang",s:"OH",k:0.015},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:6, kat:"Pekerjaan Finishing", nama:"Plesteran Campuran 1:4 t=1,5cm", sat:"m2", bahan:[{n:"Semen",s:"kg",k:10.8},{n:"Pasir pasang",s:"m3",k:0.026}], tenaga:[{n:"Pekerja",s:"OH",k:0.25},{n:"Tukang batu",s:"OH",k:0.125},{n:"Kepala tukang",s:"OH",k:0.0125},{n:"Mandor",s:"OH",k:0.00625}] },
+  { id:7, kat:"Pekerjaan Finishing", nama:"Plesteran dengan Mortar t=2,0cm", sat:"m2", bahan:[{n:"Mortar instan",s:"kg",k:12}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.1},{n:"Kepala tukang",s:"OH",k:0.01},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:8, kat:"Pekerjaan Finishing", nama:"Plesteran Campuran 1:2 t=1,5cm", sat:"m2", bahan:[{n:"Semen",s:"kg",k:14},{n:"Pasir pasang",s:"m3",k:0.018}], tenaga:[{n:"Pekerja",s:"OH",k:0.25},{n:"Tukang batu",s:"OH",k:0.125},{n:"Kepala tukang",s:"OH",k:0.0125},{n:"Mandor",s:"OH",k:0.00625}] },
+  { id:9, kat:"Pekerjaan Finishing", nama:"Pasangan Screed t=5cm", sat:"m2", bahan:[{n:"Semen",s:"kg",k:20},{n:"Pasir beton",s:"m3",k:0.05}], tenaga:[{n:"Pekerja",s:"OH",k:0.15},{n:"Tukang batu",s:"OH",k:0.075},{n:"Kepala tukang",s:"OH",k:0.0075},{n:"Mandor",s:"OH",k:0.00375}] },
+  { id:10, kat:"Pekerjaan Finishing", nama:"Acian Semen", sat:"m2", bahan:[{n:"Semen",s:"kg",k:6.5}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang batu",s:"OH",k:0.05}] },
+  { id:11, kat:"Pekerjaan Finishing", nama:"Acian Mortar", sat:"m2", bahan:[{n:"Mortar instan",s:"kg",k:3.5}], tenaga:[{n:"Pekerja",s:"OH",k:0.08},{n:"Tukang batu",s:"OH",k:0.04}] },
+  { id:93, kat:"Pekerjaan Finishing", nama:"Pasang Keramik 20x20", sat:"m2", bahan:[{n:"Keramik 20x20",s:"m2",k:1.05},{n:"Semen",s:"kg",k:5},{n:"Pasir pasang",s:"m3",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:94, kat:"Pekerjaan Finishing", nama:"Pasang Keramik 25x25", sat:"m2", bahan:[{n:"Keramik 25x25",s:"m2",k:1.05},{n:"Semen",s:"kg",k:5},{n:"Pasir pasang",s:"m3",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:95, kat:"Pekerjaan Finishing", nama:"Pasang Keramik 30x30", sat:"m2", bahan:[{n:"Keramik 30x30",s:"m2",k:1.05},{n:"Semen",s:"kg",k:5},{n:"Pasir pasang",s:"m3",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:96, kat:"Pekerjaan Finishing", nama:"Pasang Keramik 40x40", sat:"m2", bahan:[{n:"Keramik 40x40",s:"m2",k:1.05},{n:"Semen",s:"kg",k:5},{n:"Pasir pasang",s:"m3",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:97, kat:"Pekerjaan Finishing", nama:"Pasang Keramik 50x50", sat:"m2", bahan:[{n:"Keramik 50x50",s:"m2",k:1.05},{n:"Semen",s:"kg",k:5},{n:"Pasir pasang",s:"m3",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:98, kat:"Pekerjaan Finishing", nama:"Pasang Keramik 25x50", sat:"m2", bahan:[{n:"Keramik 25x50",s:"m2",k:1.05},{n:"Semen",s:"kg",k:5},{n:"Pasir pasang",s:"m3",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:99, kat:"Pekerjaan Finishing", nama:"Pasang Keramik Plint 10x20", sat:"m'", bahan:[{n:"Keramik plint 10x20",s:"bh",k:1},{n:"Semen",s:"kg",k:0.5},{n:"Pasir pasang",s:"m3",k:0.002}], tenaga:[{n:"Pekerja",s:"OH",k:0.05},{n:"Tukang batu",s:"OH",k:0.05}] },
+  { id:100, kat:"Pekerjaan Finishing", nama:"Pasang Keramik Plint 10x30", sat:"m'", bahan:[{n:"Keramik plint 10x30",s:"bh",k:1},{n:"Semen",s:"kg",k:0.5},{n:"Pasir pasang",s:"m3",k:0.002}], tenaga:[{n:"Pekerja",s:"OH",k:0.05},{n:"Tukang batu",s:"OH",k:0.05}] },
+  { id:101, kat:"Pekerjaan Finishing", nama:"Pasang Keramik Plint 10x40", sat:"m'", bahan:[{n:"Keramik plint 10x40",s:"bh",k:1},{n:"Semen",s:"kg",k:0.5},{n:"Pasir pasang",s:"m3",k:0.002}], tenaga:[{n:"Pekerja",s:"OH",k:0.05},{n:"Tukang batu",s:"OH",k:0.05}] },
+  { id:102, kat:"Pekerjaan Finishing", nama:"Pasang Keramik Plint 10x50", sat:"m'", bahan:[{n:"Keramik plint 10x50",s:"bh",k:1},{n:"Semen",s:"kg",k:0.5},{n:"Pasir pasang",s:"m3",k:0.002}], tenaga:[{n:"Pekerja",s:"OH",k:0.05},{n:"Tukang batu",s:"OH",k:0.05}] },
+  { id:103, kat:"Pekerjaan Finishing", nama:"Pasang Granit 60x60", sat:"m2", bahan:[{n:"Granit 60x60",s:"m2",k:1.05},{n:"Semen",s:"kg",k:6},{n:"Pasir pasang",s:"m3",k:0.022}], tenaga:[{n:"Pekerja",s:"OH",k:0.25},{n:"Tukang batu",s:"OH",k:0.25},{n:"Kepala tukang",s:"OH",k:0.025},{n:"Mandor",s:"OH",k:0.0125}] },
+  { id:104, kat:"Pekerjaan Finishing", nama:"Pasang Granit 100x100", sat:"m2", bahan:[{n:"Granit 100x100",s:"m2",k:1.05},{n:"Semen",s:"kg",k:6},{n:"Pasir pasang",s:"m3",k:0.022}], tenaga:[{n:"Pekerja",s:"OH",k:0.25},{n:"Tukang batu",s:"OH",k:0.25},{n:"Kepala tukang",s:"OH",k:0.025},{n:"Mandor",s:"OH",k:0.0125}] },
+  { id:105, kat:"Pekerjaan Finishing", nama:"Pasang Granit 120x60", sat:"m2", bahan:[{n:"Granit 120x60",s:"m2",k:1.05},{n:"Semen",s:"kg",k:6},{n:"Pasir pasang",s:"m3",k:0.022}], tenaga:[{n:"Pekerja",s:"OH",k:0.25},{n:"Tukang batu",s:"OH",k:0.25},{n:"Kepala tukang",s:"OH",k:0.025},{n:"Mandor",s:"OH",k:0.0125}] },
+  { id:12, kat:"Pekerjaan Tanah", nama:"Galian Tanah Manual", sat:"m3", bahan:[], tenaga:[{n:"Pekerja",s:"OH",k:0.75},{n:"Mandor",s:"OH",k:0.025}] },
+  { id:13, kat:"Pekerjaan Tanah", nama:"Galian Tanah Mekanis", sat:"m3", bahan:[{n:"Sewa Excavator",s:"jam",k:0.05}], tenaga:[{n:"Operator",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:14, kat:"Pekerjaan Tanah", nama:"Urugan Tanah Manual", sat:"m3", bahan:[{n:"Tanah urug",s:"m3",k:1.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Mandor",s:"OH",k:0.025}] },
+  { id:15, kat:"Pekerjaan Tanah", nama:"Urugan Tanah Mekanis", sat:"m3", bahan:[{n:"Tanah urug",s:"m3",k:1.2},{n:"Sewa Stamper",s:"jam",k:0.03}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Operator",s:"OH",k:0.03},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:16, kat:"Pekerjaan Persiapan", nama:"Pemasangan Bouwplank", sat:"m'", bahan:[{n:"Kayu papan",s:"m3",k:0.012},{n:"Kayu balok",s:"m3",k:0.01},{n:"Paku",s:"kg",k:0.05}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang kayu",s:"OH",k:0.1},{n:"Kepala tukang",s:"OH",k:0.01},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:17, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton K-225 (1:2:3)", sat:"m3", bahan:[{n:"Semen",s:"kg",k:371},{n:"Pasir beton",s:"m3",k:0.5},{n:"Kerikil",s:"m3",k:0.75}], tenaga:[{n:"Pekerja",s:"OH",k:1.65},{n:"Tukang batu",s:"OH",k:0.275},{n:"Kepala tukang",s:"OH",k:0.028},{n:"Mandor",s:"OH",k:0.083}] },
+  { id:18, kat:"Pekerjaan Struktur Beton", nama:"Pembesian Polos", sat:"kg", bahan:[{n:"Besi beton polos",s:"kg",k:1.05},{n:"Kawat beton",s:"kg",k:0.015}], tenaga:[{n:"Pekerja",s:"OH",k:0.007},{n:"Tukang besi",s:"OH",k:0.007},{n:"Kepala tukang",s:"OH",k:0.0007},{n:"Mandor",s:"OH",k:0.00035}] },
+  { id:19, kat:"Pekerjaan Struktur Beton", nama:"Pembesian Ulir", sat:"kg", bahan:[{n:"Besi beton ulir",s:"kg",k:1.05},{n:"Kawat beton",s:"kg",k:0.015}], tenaga:[{n:"Pekerja",s:"OH",k:0.007},{n:"Tukang besi",s:"OH",k:0.007},{n:"Kepala tukang",s:"OH",k:0.0007},{n:"Mandor",s:"OH",k:0.00035}] },
+  { id:20, kat:"Pekerjaan Struktur Beton", nama:"Bekisting Sloof", sat:"m2", bahan:[{n:"Kayu papan",s:"m3",k:0.03},{n:"Kayu balok",s:"m3",k:0.02},{n:"Paku",s:"kg",k:0.3},{n:"Minyak bekisting",s:"liter",k:0.1}], tenaga:[{n:"Pekerja",s:"OH",k:0.3},{n:"Tukang kayu",s:"OH",k:0.3},{n:"Kepala tukang",s:"OH",k:0.03},{n:"Mandor",s:"OH",k:0.015}] },
+  { id:21, kat:"Pekerjaan Struktur Beton", nama:"Bekisting Pilecap", sat:"m2", bahan:[{n:"Kayu papan",s:"m3",k:0.035},{n:"Kayu balok",s:"m3",k:0.025},{n:"Paku",s:"kg",k:0.4},{n:"Minyak bekisting",s:"liter",k:0.15}], tenaga:[{n:"Pekerja",s:"OH",k:0.35},{n:"Tukang kayu",s:"OH",k:0.35},{n:"Kepala tukang",s:"OH",k:0.035},{n:"Mandor",s:"OH",k:0.0175}] },
+  { id:22, kat:"Pekerjaan Struktur Beton", nama:"Bekisting Kolom", sat:"m2", bahan:[{n:"Kayu papan",s:"m3",k:0.04},{n:"Kayu balok",s:"m3",k:0.02},{n:"Paku",s:"kg",k:0.4},{n:"Minyak bekisting",s:"liter",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.33},{n:"Tukang kayu",s:"OH",k:0.33},{n:"Kepala tukang",s:"OH",k:0.033},{n:"Mandor",s:"OH",k:0.0165}] },
+  { id:23, kat:"Pekerjaan Struktur Beton", nama:"Bekisting Balok", sat:"m2", bahan:[{n:"Kayu papan",s:"m3",k:0.04},{n:"Kayu balok",s:"m3",k:0.025},{n:"Paku",s:"kg",k:0.4},{n:"Minyak bekisting",s:"liter",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.33},{n:"Tukang kayu",s:"OH",k:0.33},{n:"Kepala tukang",s:"OH",k:0.033},{n:"Mandor",s:"OH",k:0.0165}] },
+  { id:24, kat:"Pekerjaan Struktur Beton", nama:"Bekisting Pelat Lantai", sat:"m2", bahan:[{n:"Kayu papan",s:"m3",k:0.03},{n:"Kayu balok",s:"m3",k:0.015},{n:"Paku",s:"kg",k:0.3},{n:"Minyak bekisting",s:"liter",k:0.15}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang kayu",s:"OH",k:0.25},{n:"Kepala tukang",s:"OH",k:0.025},{n:"Mandor",s:"OH",k:0.0125}] },
+  { id:25, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Site mix K-100", sat:"m3", bahan:[{n:"Semen",s:"kg",k:247},{n:"Pasir beton",s:"m3",k:0.54},{n:"Kerikil",s:"m3",k:0.56}], tenaga:[{n:"Pekerja",s:"OH",k:1.5},{n:"Tukang batu",s:"OH",k:0.5},{n:"Kepala tukang",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.075}] },
+  { id:26, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Site mix K-125", sat:"m3", bahan:[{n:"Semen",s:"kg",k:276},{n:"Pasir beton",s:"m3",k:0.52},{n:"Kerikil",s:"m3",k:0.56}], tenaga:[{n:"Pekerja",s:"OH",k:1.5},{n:"Tukang batu",s:"OH",k:0.5},{n:"Kepala tukang",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.075}] },
+  { id:27, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Site mix K-200", sat:"m3", bahan:[{n:"Semen",s:"kg",k:352},{n:"Pasir beton",s:"m3",k:0.46},{n:"Kerikil",s:"m3",k:0.57}], tenaga:[{n:"Pekerja",s:"OH",k:1.5},{n:"Tukang batu",s:"OH",k:0.5},{n:"Kepala tukang",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.075}] },
+  { id:28, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Site mix K-250", sat:"m3", bahan:[{n:"Semen",s:"kg",k:384},{n:"Pasir beton",s:"m3",k:0.43},{n:"Kerikil",s:"m3",k:0.58}], tenaga:[{n:"Pekerja",s:"OH",k:1.5},{n:"Tukang batu",s:"OH",k:0.5},{n:"Kepala tukang",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.075}] },
+  { id:29, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Site mix K-300", sat:"m3", bahan:[{n:"Semen",s:"kg",k:413},{n:"Pasir beton",s:"m3",k:0.43},{n:"Kerikil",s:"m3",k:0.57}], tenaga:[{n:"Pekerja",s:"OH",k:1.5},{n:"Tukang batu",s:"OH",k:0.5},{n:"Kepala tukang",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.075}] },
+  { id:30, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-100", sat:"m3", bahan:[{n:"Beton ready mix K-100",s:"m3",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:31, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-200", sat:"m3", bahan:[{n:"Beton ready mix K-200",s:"m3",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:32, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-250", sat:"m3", bahan:[{n:"Beton ready mix K-250",s:"m3",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:33, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-300", sat:"m3", bahan:[{n:"Beton ready mix K-300",s:"m3",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:34, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-350", sat:"m3", bahan:[{n:"Beton ready mix K-350",s:"m3",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:35, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-400", sat:"m3", bahan:[{n:"Beton ready mix K-400",s:"m3",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:73, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-250 dgn Concrete Pump", sat:"m3", bahan:[{n:"Beton ready mix K-250",s:"m3",k:1},{n:"Sewa Concrete Pump",s:"jam",k:0.08}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:74, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-300 dgn Concrete Pump", sat:"m3", bahan:[{n:"Beton ready mix K-300",s:"m3",k:1},{n:"Sewa Concrete Pump",s:"jam",k:0.08}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:75, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-350 dgn Concrete Pump", sat:"m3", bahan:[{n:"Beton ready mix K-350",s:"m3",k:1},{n:"Sewa Concrete Pump",s:"jam",k:0.08}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:76, kat:"Pekerjaan Struktur Beton", nama:"Cor Beton Ready mix K-400 dgn Concrete Pump", sat:"m3", bahan:[{n:"Beton ready mix K-400",s:"m3",k:1},{n:"Sewa Concrete Pump",s:"jam",k:0.08}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang batu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:77, kat:"Pekerjaan Struktur Beton", nama:"Pasang Steger Kayu Dolken", sat:"m2", bahan:[{n:"Kayu dolken",s:"btg",k:2},{n:"Paku",s:"kg",k:0.1}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang kayu",s:"OH",k:0.1},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:78, kat:"Pekerjaan Struktur Beton", nama:"Pasang Perancah Kayu Balok/Kaso", sat:"m2", bahan:[{n:"Kayu balok",s:"m3",k:0.02},{n:"Kayu kaso",s:"btg",k:3},{n:"Paku",s:"kg",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang kayu",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:79, kat:"Pekerjaan Struktur Beton", nama:"Pasang Perancah Scaffolding", sat:"m2", bahan:[{n:"Sewa Scaffolding",s:"set/hari",k:0.04}], tenaga:[{n:"Pekerja",s:"OH",k:0.15},{n:"Tukang",s:"OH",k:0.15},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:80, kat:"Pekerjaan Struktur Beton", nama:"Pasang Table Formwork", sat:"m2", bahan:[{n:"Multipleks 12mm",s:"lbr",k:0.4},{n:"Kayu kaso",s:"btg",k:2.5},{n:"Paku",s:"kg",k:0.2},{n:"Minyak bekisting",s:"liter",k:0.15}], tenaga:[{n:"Pekerja",s:"OH",k:0.3},{n:"Tukang kayu",s:"OH",k:0.3},{n:"Kepala tukang",s:"OH",k:0.03},{n:"Mandor",s:"OH",k:0.015}] },
+  { id:81, kat:"Pekerjaan Struktur Beton", nama:"Bekisting Dinding Penahan Tanah (DPT)", sat:"m2", bahan:[{n:"Kayu papan",s:"m3",k:0.05},{n:"Kayu balok",s:"m3",k:0.03},{n:"Paku",s:"kg",k:0.5},{n:"Minyak bekisting",s:"liter",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.4},{n:"Tukang kayu",s:"OH",k:0.4},{n:"Kepala tukang",s:"OH",k:0.04},{n:"Mandor",s:"OH",k:0.02}] },
+  { id:82, kat:"Pekerjaan Struktur Beton", nama:"Bekisting Shear Wall", sat:"m2", bahan:[{n:"Kayu papan",s:"m3",k:0.045},{n:"Kayu balok",s:"m3",k:0.025},{n:"Paku",s:"kg",k:0.45},{n:"Minyak bekisting",s:"liter",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.35},{n:"Tukang kayu",s:"OH",k:0.35},{n:"Kepala tukang",s:"OH",k:0.035},{n:"Mandor",s:"OH",k:0.0175}] },
+  { id:83, kat:"Pekerjaan Atap", nama:"Pasang Genteng Metal", sat:"m2", bahan:[{n:"Genteng metal",s:"lbr",k:2.5},{n:"Skrup genteng",s:"bh",k:8}], tenaga:[{n:"Pekerja",s:"OH",k:0.15},{n:"Tukang",s:"OH",k:0.15},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:84, kat:"Pekerjaan Atap", nama:"Pasang Genteng Beton", sat:"m2", bahan:[{n:"Genteng beton",s:"bh",k:10},{n:"Semen",s:"kg",k:3}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.2},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:85, kat:"Pekerjaan Atap", nama:"Pasang Genteng Palentong", sat:"m2", bahan:[{n:"Genteng palentong",s:"bh",k:10},{n:"Semen",s:"kg",k:3}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.2},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:86, kat:"Pekerjaan Atap", nama:"Pasang Atap Onduline", sat:"m2", bahan:[{n:"Onduline",s:"lbr",k:0.5},{n:"Paku khusus",s:"bh",k:8}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang",s:"OH",k:0.1},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:87, kat:"Pekerjaan Atap", nama:"Pasang Atap Sirap", sat:"m2", bahan:[{n:"Sirap kayu",s:"keping",k:60},{n:"Paku",s:"kg",k:0.15}], tenaga:[{n:"Pekerja",s:"OH",k:0.25},{n:"Tukang kayu",s:"OH",k:0.25},{n:"Mandor",s:"OH",k:0.0125}] },
+  { id:88, kat:"Pekerjaan Atap", nama:"Pasang Bubungan/Nok Genteng", sat:"m'", bahan:[{n:"Nok genteng",s:"bh",k:2.5},{n:"Semen",s:"kg",k:2}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang batu",s:"OH",k:0.1},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:89, kat:"Pekerjaan Atap", nama:"Pasang Bubungan/Nok Spandek", sat:"m'", bahan:[{n:"Nok spandek",s:"lbr",k:1},{n:"Skrup spandek",s:"bh",k:4}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang",s:"OH",k:0.1},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:90, kat:"Pekerjaan Atap", nama:"Pasang Lisplank GRC Polos", sat:"m'", bahan:[{n:"Lisplank GRC polos",s:"m'",k:1},{n:"Paku",s:"kg",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.05},{n:"Tukang kayu",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.0025}] },
+  { id:91, kat:"Pekerjaan Atap", nama:"Pasang Lisplank GRC Motif", sat:"m'", bahan:[{n:"Lisplank GRC motif",s:"m'",k:1},{n:"Paku",s:"kg",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.05},{n:"Tukang kayu",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.0025}] },
+  { id:92, kat:"Pekerjaan Atap", nama:"Pasang Lisplank Kayu", sat:"m'", bahan:[{n:"Kayu lisplank",s:"m'",k:1},{n:"Paku",s:"kg",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.05},{n:"Tukang kayu",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.0025}] },
+  { id:36, kat:"Pekerjaan Struktur Baja", nama:"Rangka Baja Berat (IWF/H-Beam dll)", sat:"kg", bahan:[{n:"Baja profil",s:"kg",k:1.05},{n:"Elektroda las",s:"kg",k:0.02},{n:"Cat anti karat",s:"kg",k:0.02}], tenaga:[{n:"Pekerja",s:"OH",k:0.015},{n:"Tukang las",s:"OH",k:0.015},{n:"Kepala tukang",s:"OH",k:0.0015},{n:"Mandor",s:"OH",k:0.00075}] },
+  { id:37, kat:"Pekerjaan Atap", nama:"Rangka Atap Baja Ringan", sat:"m2", bahan:[{n:"Canal C",s:"m'",k:1.2},{n:"Reng",s:"m'",k:1.5},{n:"Baut self drilling",s:"bh",k:10}], tenaga:[{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang baja ringan",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:38, kat:"Pekerjaan Atap", nama:"Penutup Atap Spandek", sat:"m2", bahan:[{n:"Spandek atap",s:"m2",k:1.1},{n:"Skrup spandek",s:"bh",k:6}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang",s:"OH",k:0.1},{n:"Kepala tukang",s:"OH",k:0.01},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:39, kat:"Pekerjaan Atap", nama:"Cladding Spandek", sat:"m2", bahan:[{n:"Spandek cladding",s:"m2",k:1.1},{n:"Skrup spandek",s:"bh",k:6}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang",s:"OH",k:0.1},{n:"Kepala tukang",s:"OH",k:0.01},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:40, kat:"Pekerjaan Struktur Baja", nama:"Angkur dan Baseplate", sat:"bh", bahan:[{n:"Angkur + baseplate",s:"set",k:1},{n:"Baut angkur",s:"bh",k:4},{n:"Chemical anchor",s:"bh",k:2}], tenaga:[{n:"Pekerja",s:"OH",k:0.15},{n:"Tukang besi",s:"OH",k:0.15},{n:"Kepala tukang",s:"OH",k:0.015},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:41, kat:"Pekerjaan Persiapan", nama:"Pembuatan Pagar Keliling Proyek", sat:"m'", bahan:[{n:"Seng gelombang",s:"lbr",k:2},{n:"Kayu dolken",s:"btg",k:2},{n:"Paku",s:"kg",k:0.1}], tenaga:[{n:"Pekerja",s:"OH",k:0.15},{n:"Tukang kayu",s:"OH",k:0.15},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:42, kat:"Pekerjaan Persiapan", nama:"Pembuatan Direksi Keet", sat:"m2", bahan:[{n:"Multipleks 12mm",s:"lbr",k:0.5},{n:"Kayu kaso",s:"btg",k:3},{n:"Atap seng",s:"lbr",k:0.5},{n:"Paku",s:"kg",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.3},{n:"Tukang kayu",s:"OH",k:0.3},{n:"Kepala tukang",s:"OH",k:0.03},{n:"Mandor",s:"OH",k:0.015}] },
+  { id:43, kat:"Pekerjaan Persiapan", nama:"Pembuatan Gudang", sat:"m2", bahan:[{n:"Multipleks 12mm",s:"lbr",k:0.6},{n:"Kayu kaso",s:"btg",k:3.5},{n:"Atap seng",s:"lbr",k:0.6},{n:"Paku",s:"kg",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.35},{n:"Tukang kayu",s:"OH",k:0.35},{n:"Kepala tukang",s:"OH",k:0.035},{n:"Mandor",s:"OH",k:0.0175}] },
+  { id:44, kat:"Pekerjaan Persiapan", nama:"Pembuatan Bedeng Pekerja", sat:"m2", bahan:[{n:"Multipleks 12mm",s:"lbr",k:0.4},{n:"Kayu kaso",s:"btg",k:2.5},{n:"Atap seng",s:"lbr",k:0.4},{n:"Paku",s:"kg",k:0.15}], tenaga:[{n:"Pekerja",s:"OH",k:0.25},{n:"Tukang kayu",s:"OH",k:0.25},{n:"Kepala tukang",s:"OH",k:0.025},{n:"Mandor",s:"OH",k:0.0125}] },
+  { id:45, kat:"Pekerjaan Persiapan", nama:"Pembuatan Toilet Pekerja", sat:"unit", bahan:[{n:"Kloset jongkok",s:"bh",k:1},{n:"Pipa PVC 3\"",s:"btg",k:1},{n:"Semen",s:"kg",k:5},{n:"Bata merah",s:"buah",k:50},{n:"Multipleks 12mm",s:"lbr",k:1},{n:"Atap seng",s:"lbr",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.5},{n:"Tukang kayu",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.3},{n:"Mandor",s:"OH",k:0.025}] },
+  { id:106, kat:"Pekerjaan Pondasi", nama:"Pondasi Batu Kali/Belah 1:4", sat:"m3", bahan:[{n:"Batu belah",s:"m3",k:1.2},{n:"Semen",s:"kg",k:163},{n:"Pasir pasang",s:"m3",k:0.52}], tenaga:[{n:"Pekerja",s:"OH",k:1.5},{n:"Tukang batu",s:"OH",k:0.75},{n:"Kepala tukang",s:"OH",k:0.075},{n:"Mandor",s:"OH",k:0.075}] },
+  { id:107, kat:"Pekerjaan Pondasi", nama:"Pasangan Batu Kosong (Aanstamping)", sat:"m3", bahan:[{n:"Batu belah",s:"m3",k:1.2},{n:"Pasir urug",s:"m3",k:0.4}], tenaga:[{n:"Pekerja",s:"OH",k:1.2},{n:"Tukang batu",s:"OH",k:0.3},{n:"Mandor",s:"OH",k:0.06}] },
+  { id:108, kat:"Pekerjaan Pondasi", nama:"Pondasi Batu Kali Cyclop", sat:"m3", bahan:[{n:"Batu belah",s:"m3",k:0.6},{n:"Semen",s:"kg",k:200},{n:"Pasir beton",s:"m3",k:0.45},{n:"Kerikil",s:"m3",k:0.6}], tenaga:[{n:"Pekerja",s:"OH",k:1.5},{n:"Tukang batu",s:"OH",k:0.5},{n:"Mandor",s:"OH",k:0.075}] },
+  { id:109, kat:"Pekerjaan Pondasi", nama:"Pemancangan Tiang Pancang Beton Precast", sat:"m'", bahan:[{n:"Tiang pancang beton precast",s:"m'",k:1}], tenaga:[{n:"Operator pancang",s:"OH",k:0.05},{n:"Tukang pancang",s:"OH",k:0.1},{n:"Pekerja",s:"OH",k:0.2},{n:"Mandor",s:"OH",k:0.02}] },
+  { id:110, kat:"Pekerjaan Pondasi", nama:"Pondasi Cerucuk Kayu/Dolken", sat:"bh", bahan:[{n:"Kayu cerucuk",s:"btg",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.15},{n:"Tukang kayu",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:111, kat:"Pekerjaan Mekanikal dan Elektrikal", nama:"Instalasi Titik Lampu", sat:"titik", bahan:[{n:"Kabel NYM 3x2.5",s:"m'",k:5},{n:"Pipa conduit 5/8\"",s:"m'",k:3},{n:"Fitting lampu/roset",s:"bh",k:1},{n:"Saklar tunggal",s:"bh",k:1}], tenaga:[{n:"Tukang listrik",s:"OH",k:0.15},{n:"Pekerja",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:112, kat:"Pekerjaan Mekanikal dan Elektrikal", nama:"Instalasi Titik Stop Kontak", sat:"titik", bahan:[{n:"Kabel NYM 3x2.5",s:"m'",k:6},{n:"Pipa conduit 5/8\"",s:"m'",k:3},{n:"Stop kontak",s:"bh",k:1}], tenaga:[{n:"Tukang listrik",s:"OH",k:0.15},{n:"Pekerja",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:113, kat:"Pekerjaan Mekanikal dan Elektrikal", nama:"Pemasangan Panel Listrik (MCB Box)", sat:"unit", bahan:[{n:"Panel MCB box",s:"bh",k:1},{n:"MCB 1 fasa",s:"bh",k:4},{n:"Kabel NYAF",s:"m'",k:5}], tenaga:[{n:"Tukang listrik",s:"OH",k:1},{n:"Pekerja",s:"OH",k:0.3},{n:"Mandor",s:"OH",k:0.05}] },
+  { id:114, kat:"Pekerjaan Mekanikal dan Elektrikal", nama:"Pemasangan Lampu LED/TL", sat:"titik", bahan:[{n:"Lampu LED 12W",s:"bh",k:1}], tenaga:[{n:"Tukang listrik",s:"OH",k:0.1},{n:"Pekerja",s:"OH",k:0.03}] },
+  { id:115, kat:"Pekerjaan Mekanikal dan Elektrikal", nama:"Instalasi Kabel Feeder NYY", sat:"m'", bahan:[{n:"Kabel NYY",s:"m'",k:1.05}], tenaga:[{n:"Tukang listrik",s:"OH",k:0.02},{n:"Pekerja",s:"OH",k:0.02}] },
+  { id:116, kat:"Pekerjaan Mekanikal dan Elektrikal", nama:"Pemasangan Exhaust Fan", sat:"unit", bahan:[{n:"Exhaust fan",s:"bh",k:1}], tenaga:[{n:"Tukang listrik",s:"OH",k:0.25},{n:"Pekerja",s:"OH",k:0.1}] },
+  { id:117, kat:"Pekerjaan Mekanikal dan Elektrikal", nama:"Pemasangan AC Split 1 PK", sat:"unit", bahan:[{n:"AC split 1PK",s:"bh",k:1},{n:"Pipa refrigerant set",s:"set",k:1},{n:"Kabel NYM 3x2.5",s:"m'",k:5}], tenaga:[{n:"Tukang AC",s:"OH",k:1},{n:"Pekerja",s:"OH",k:0.3}] },
+  { id:118, kat:"Pekerjaan Plumbing", nama:"Instalasi Pipa Air Bersih PVC 1/2\"", sat:"m'", bahan:[{n:"Pipa PVC 1/2\"",s:"m'",k:1.05},{n:"Lem pipa",s:"kg",k:0.02}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.05},{n:"Pekerja",s:"OH",k:0.05}] },
+  { id:119, kat:"Pekerjaan Plumbing", nama:"Instalasi Pipa Air Kotor PVC 4\"", sat:"m'", bahan:[{n:"Pipa PVC 4\"",s:"m'",k:1.05},{n:"Lem pipa",s:"kg",k:0.03}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.07},{n:"Pekerja",s:"OH",k:0.07}] },
+  { id:120, kat:"Pekerjaan Plumbing", nama:"Pemasangan Kran Air", sat:"bh", bahan:[{n:"Kran air",s:"bh",k:1}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.1},{n:"Pekerja",s:"OH",k:0.05}] },
+  { id:121, kat:"Pekerjaan Plumbing", nama:"Pemasangan Closet Duduk", sat:"unit", bahan:[{n:"Closet duduk",s:"bh",k:1},{n:"Semen",s:"kg",k:3}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.5},{n:"Pekerja",s:"OH",k:0.3},{n:"Tukang batu",s:"OH",k:0.15}] },
+  { id:122, kat:"Pekerjaan Plumbing", nama:"Pemasangan Wastafel", sat:"unit", bahan:[{n:"Wastafel + kran",s:"bh",k:1}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.4},{n:"Pekerja",s:"OH",k:0.2}] },
+  { id:123, kat:"Pekerjaan Plumbing", nama:"Pembuatan Septic Tank", sat:"unit", bahan:[{n:"Bata merah",s:"buah",k:600},{n:"Semen",s:"kg",k:250},{n:"Pasir pasang",s:"m3",k:0.6},{n:"Buis beton",s:"bh",k:4}], tenaga:[{n:"Pekerja",s:"OH",k:3},{n:"Tukang batu",s:"OH",k:2},{n:"Kepala tukang",s:"OH",k:0.2},{n:"Mandor",s:"OH",k:0.15}] },
+  { id:124, kat:"Pekerjaan Plumbing", nama:"Pemasangan Pompa Air", sat:"unit", bahan:[{n:"Pompa air",s:"bh",k:1},{n:"Pipa PVC 1\"",s:"m'",k:6}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.5},{n:"Tukang listrik",s:"OH",k:0.2},{n:"Pekerja",s:"OH",k:0.2}] },
+  { id:125, kat:"Pekerjaan Finishing", nama:"Pasang Rangka Plafond Hollow 20x40/40x40", sat:"m2", bahan:[{n:"Hollow 20x40",s:"m'",k:3.6},{n:"Hollow 40x40",s:"m'",k:1.2},{n:"Sekrup hollow",s:"bh",k:12},{n:"Kawat penggantung plafond",s:"m'",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang plafon",s:"OH",k:0.1},{n:"Kepala tukang",s:"OH",k:0.01},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:126, kat:"Pekerjaan Finishing", nama:"Pasang Plafond Gypsum", sat:"m2", bahan:[{n:"Gypsum board 9mm",s:"m2",k:1.05},{n:"Sekrup gypsum",s:"bh",k:15},{n:"Compound gypsum",s:"kg",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang plafon",s:"OH",k:0.15},{n:"Kepala tukang",s:"OH",k:0.015},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:127, kat:"Pekerjaan Finishing", nama:"Pasang Plafond GRC", sat:"m2", bahan:[{n:"GRC board 4mm",s:"m2",k:1.05},{n:"Sekrup GRC",s:"bh",k:15},{n:"Compound gypsum",s:"kg",k:0.15}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang plafon",s:"OH",k:0.15},{n:"Kepala tukang",s:"OH",k:0.015},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:128, kat:"Pekerjaan Finishing", nama:"Pasang Plafond PVC", sat:"m2", bahan:[{n:"Plafond PVC",s:"m2",k:1.05},{n:"Sekrup PVC",s:"bh",k:10}], tenaga:[{n:"Pekerja",s:"OH",k:0.08},{n:"Tukang plafon",s:"OH",k:0.12},{n:"Kepala tukang",s:"OH",k:0.012},{n:"Mandor",s:"OH",k:0.006}] },
+  { id:129, kat:"Pekerjaan Finishing", nama:"Pengecatan Dinding Interior", sat:"m2", bahan:[{n:"Plamir",s:"kg",k:0.1},{n:"Cat tembok",s:"kg",k:0.26}], tenaga:[{n:"Pekerja",s:"OH",k:0.02},{n:"Tukang cat",s:"OH",k:0.063},{n:"Kepala tukang",s:"OH",k:0.0063},{n:"Mandor",s:"OH",k:0.002}] },
+  { id:130, kat:"Pekerjaan Finishing", nama:"Pengecatan Dinding Eksterior", sat:"m2", bahan:[{n:"Plamir",s:"kg",k:0.1},{n:"Cat tembok eksterior",s:"kg",k:0.3}], tenaga:[{n:"Pekerja",s:"OH",k:0.025},{n:"Tukang cat",s:"OH",k:0.07},{n:"Kepala tukang",s:"OH",k:0.007},{n:"Mandor",s:"OH",k:0.0025}] },
+  { id:131, kat:"Pekerjaan Finishing", nama:"Pengecatan Plafond", sat:"m2", bahan:[{n:"Cat plafond",s:"kg",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.02},{n:"Tukang cat",s:"OH",k:0.05},{n:"Mandor",s:"OH",k:0.0025}] },
+  { id:132, kat:"Pekerjaan Finishing", nama:"Pengecatan Kusen Kayu", sat:"m2", bahan:[{n:"Plamir kayu",s:"kg",k:0.1},{n:"Meni kayu",s:"kg",k:0.05},{n:"Cat kayu/melamin",s:"kg",k:0.17}], tenaga:[{n:"Pekerja",s:"OH",k:0.02},{n:"Tukang cat",s:"OH",k:0.1},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:133, kat:"Pekerjaan Finishing", nama:"Pengecatan Besi", sat:"m2", bahan:[{n:"Meni besi",s:"kg",k:0.1},{n:"Cat besi",s:"kg",k:0.2}], tenaga:[{n:"Pekerja",s:"OH",k:0.02},{n:"Tukang cat",s:"OH",k:0.09},{n:"Mandor",s:"OH",k:0.0045}] },
+  { id:134, kat:"Pekerjaan Finishing", nama:"Pasang Rangka ACP Hollow Galvanis 40x40", sat:"m2", bahan:[{n:"Hollow galvanis 40x40",s:"m'",k:3.6},{n:"Sekrup hollow",s:"bh",k:12},{n:"Bracket/dynabolt",s:"bh",k:4}], tenaga:[{n:"Pekerja",s:"OH",k:0.15},{n:"Tukang ACP",s:"OH",k:0.15},{n:"Kepala tukang",s:"OH",k:0.015},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:135, kat:"Pekerjaan Finishing", nama:"Pasang ACP PVDF", sat:"m2", bahan:[{n:"ACP PVDF 4mm",s:"m2",k:1.05},{n:"Sealant tabung",s:"tube",k:0.05},{n:"Sekrup ACP",s:"bh",k:10}], tenaga:[{n:"Tukang ACP",s:"OH",k:0.25},{n:"Pekerja",s:"OH",k:0.15},{n:"Kepala tukang",s:"OH",k:0.025},{n:"Mandor",s:"OH",k:0.0125}] },
+  { id:136, kat:"Pekerjaan Finishing", nama:"Pasang ACP Cutting Laser", sat:"m2", bahan:[{n:"ACP PVDF 4mm",s:"m2",k:1.1},{n:"Sealant tabung",s:"tube",k:0.08},{n:"Sekrup ACP",s:"bh",k:12}], tenaga:[{n:"Tukang ACP",s:"OH",k:0.35},{n:"Pekerja",s:"OH",k:0.2},{n:"Kepala tukang",s:"OH",k:0.035},{n:"Mandor",s:"OH",k:0.0175}] },
+  { id:137, kat:"Pekerjaan Finishing", nama:"Pasang Wall Panel UPVC", sat:"m2", bahan:[{n:"Wall panel UPVC",s:"m2",k:1.05},{n:"Lem UPVC/sealant",s:"kg",k:0.1},{n:"Sekrup UPVC",s:"bh",k:10}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang plafon",s:"OH",k:0.12},{n:"Kepala tukang",s:"OH",k:0.012},{n:"Mandor",s:"OH",k:0.006}] },
+  { id:138, kat:"Pekerjaan Finishing", nama:"Pasang Wall Board UPVC", sat:"m2", bahan:[{n:"Wall board UPVC",s:"m2",k:1.05},{n:"Sekrup UPVC",s:"bh",k:12}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang plafon",s:"OH",k:0.15},{n:"Kepala tukang",s:"OH",k:0.015},{n:"Mandor",s:"OH",k:0.0075}] },
+  { id:139, kat:"Pekerjaan Finishing", nama:"Pasang Kusen Alumunium", sat:"m'", bahan:[{n:"Kusen aluminium",s:"m'",k:1.05},{n:"Sekrup fischer",s:"bh",k:6},{n:"Sealant tabung",s:"tube",k:0.02}], tenaga:[{n:"Tukang aluminium",s:"OH",k:0.2},{n:"Pekerja",s:"OH",k:0.1},{n:"Kepala tukang",s:"OH",k:0.02},{n:"Mandor",s:"OH",k:0.01}] },
+  { id:140, kat:"Pekerjaan Finishing", nama:"Pasang Kusen Kayu", sat:"m3", bahan:[{n:"Kayu kusen",s:"m3",k:1.2},{n:"Paku",s:"kg",k:2}], tenaga:[{n:"Pekerja",s:"OH",k:6.65},{n:"Tukang kayu",s:"OH",k:15},{n:"Kepala tukang",s:"OH",k:1.5},{n:"Mandor",s:"OH",k:0.664}] },
+  { id:141, kat:"Pekerjaan Finishing", nama:"Pasang Rooster ukuran 20x20cm", sat:"bh", bahan:[{n:"Rooster beton/keramik 20x20",s:"bh",k:1},{n:"Semen",s:"kg",k:1},{n:"Pasir pasang",s:"m3",k:0.005}], tenaga:[{n:"Pekerja",s:"OH",k:0.1},{n:"Tukang batu",s:"OH",k:0.1},{n:"Mandor",s:"OH",k:0.005}] },
+  { id:142, kat:"Pekerjaan Finishing", nama:"Pasang Glassblock", sat:"m2", bahan:[{n:"Glass block 19x19x8",s:"bh",k:25},{n:"Semen putih",s:"kg",k:8},{n:"Pasir pasang",s:"m3",k:0.02},{n:"Besi tulangan rangka glassblock",s:"kg",k:1}], tenaga:[{n:"Pekerja",s:"OH",k:0.3},{n:"Tukang batu",s:"OH",k:0.3},{n:"Kepala tukang",s:"OH",k:0.03},{n:"Mandor",s:"OH",k:0.015}] },
+  { id:143, kat:"Pekerjaan Finishing", nama:"Pasang Closet Jongkok", sat:"unit", bahan:[{n:"Kloset jongkok",s:"bh",k:1},{n:"Semen",s:"kg",k:3}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.4},{n:"Pekerja",s:"OH",k:0.2},{n:"Tukang batu",s:"OH",k:0.1}] },
+  { id:144, kat:"Pekerjaan Finishing", nama:"Pasang Closet Duduk Monoblock", sat:"unit", bahan:[{n:"Closet duduk monoblock",s:"bh",k:1}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.5},{n:"Pekerja",s:"OH",k:0.25}] },
+  { id:145, kat:"Pekerjaan Finishing", nama:"Pasang Washtafel", sat:"unit", bahan:[{n:"Wastafel + kran",s:"bh",k:1}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.4},{n:"Pekerja",s:"OH",k:0.2}] },
+  { id:146, kat:"Pekerjaan Finishing", nama:"Pasang Shower", sat:"unit", bahan:[{n:"Shower set/mixer",s:"bh",k:1},{n:"Pipa PVC 1/2\"",s:"m'",k:3}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.3},{n:"Pekerja",s:"OH",k:0.15}] },
+  { id:147, kat:"Pekerjaan Finishing", nama:"Pasang Jet Washer", sat:"unit", bahan:[{n:"Jet washer/bidet spray set",s:"bh",k:1},{n:"Pipa fleksibel",s:"m'",k:1}], tenaga:[{n:"Tukang pipa",s:"OH",k:0.2},{n:"Pekerja",s:"OH",k:0.1}] },
+  { id:148, kat:"Pekerjaan Finishing", nama:"Pasang Jacuzzi", sat:"unit", bahan:[{n:"Jacuzzi/bathtub whirlpool unit",s:"bh",k:1},{n:"Pompa jacuzzi",s:"bh",k:1},{n:"Pipa PVC 1\"",s:"m'",k:4}], tenaga:[{n:"Tukang pipa",s:"OH",k:1},{n:"Tukang listrik",s:"OH",k:0.3},{n:"Pekerja",s:"OH",k:0.5}] }
+];
+
+const kategoriList=["Semua","Pekerjaan Persiapan","Pekerjaan Tanah","Pekerjaan Pondasi","Pekerjaan Struktur Beton","Pekerjaan Struktur Baja","Pekerjaan Atap","Pekerjaan Finishing","Pekerjaan Mekanikal dan Elektrikal","Pekerjaan Plumbing"];
+
+// Kategori Item Dasar
+const ALAT_KEYS = ["Sewa Excavator", "Sewa Stamper", "Sewa Concrete Pump", "Sewa Scaffolding"];
+const UPAH_KEYS = ["Pekerja", "Tukang batu", "Tukang cat", "Kepala tukang", "Mandor", "Operator", "Operator bor", "Operator pancang", "Tukang kayu", "Tukang pancang", "Tukang besi", "Tukang las", "Tukang baja ringan", "Tukang listrik", "Tukang pipa", "Tukang AC", "Tukang plafon", "Tukang ACP", "Tukang aluminium", "Tukang"];
+
+let hargaSatuan={"Bata merah":800,"Bata ringan":7500,"Mortar instan":2500,"Batako":3500,"Semen":1400,"Pasir pasang":250000,"Pasir beton":280000,"Kerikil":300000,"Plamir":15000,"Cat tembok":35000,"Pekerja":100000,"Tukang batu":140000,"Tukang cat":140000,"Kepala tukang":160000,"Mandor":180000,"Tanah urug":120000,"Sewa Excavator":300000,"Sewa Stamper":150000,"Kayu papan":3500000,"Kayu balok":4000000,"Paku":20000,"Tulangan baja":12000,"Beton ready mix":1200000,"Operator":150000,"Operator bor":180000,"Tukang kayu":140000,"Tukang pancang":150000,"Besi beton polos":12000,"Besi beton ulir":13000,"Kawat beton":20000,"Tukang besi":140000,"Minyak bekisting":15000,"Beton ready mix K-100":800000,"Beton ready mix K-200":950000,"Beton ready mix K-250":1050000,"Beton ready mix K-300":1150000,"Beton ready mix K-350":1250000,"Beton ready mix K-400":1350000,"Baja profil":14000,"Elektroda las":40000,"Cat anti karat":50000,"Tukang las":150000,"Canal C":18000,"Reng":12000,"Baut self drilling":1500,"Tukang baja ringan":140000,"Spandek atap":65000,"Skrup spandek":800,"Spandek cladding":70000,"Angkur + baseplate":250000,"Baut angkur":5000,"Chemical anchor":25000,"Seng gelombang":45000,"Kayu dolken":25000,"Multipleks 12mm":150000,"Kayu kaso":30000,"Atap seng":55000,"Kloset jongkok":120000,"Pipa PVC 3\"":75000,"Sewa Concrete Pump":400000,"Sewa Scaffolding":50000,"Genteng metal":12000,"Skrup genteng":800,"Genteng beton":5000,"Genteng palentong":4500,"Onduline":150000,"Paku khusus":1000,"Sirap kayu":2500,"Nok genteng":12000,"Nok spandek":25000,"Lisplank GRC polos":30000,"Lisplank GRC motif":40000,"Kayu lisplank":15000,"Keramik 20x20":45000,"Keramik 25x25":50000,"Keramik 30x30":55000,"Keramik 40x40":65000,"Keramik 50x50":75000,"Keramik 25x50":60000,"Keramik plint 10x20":8000,"Keramik plint 10x30":12000,"Keramik plint 10x40":16000,"Keramik plint 10x50":20000,"Granit 60x60":120000,"Granit 100x100":180000,"Granit 120x60":150000,"Tukang":140000,"Batu belah":250000,"Pasir urug":200000,"Tiang pancang beton precast":350000,"Kayu cerucuk":15000,"Operator pancang":180000,"Tukang pancang":150000,"Kabel NYM 3x2.5":8000,"Pipa conduit 5/8\"":3000,"Fitting lampu/roset":15000,"Saklar tunggal":20000,"Stop kontak":25000,"Panel MCB box":350000,"MCB 1 fasa":45000,"Kabel NYAF":5000,"Lampu LED 12W":35000,"Kabel NYY":15000,"Exhaust fan":250000,"AC split 1PK":3500000,"Pipa refrigerant set":450000,"Tukang listrik":150000,"Tukang AC":160000,"Pipa PVC 1/2\"":8000,"Lem pipa":45000,"Pipa PVC 4\"":45000,"Pipa PVC 1\"":30000,"Kran air":35000,"Closet duduk":850000,"Wastafel + kran":650000,"Buis beton":150000,"Pompa air":1200000,"Tukang pipa":140000,"Hollow 20x40":15000,"Hollow 40x40":18000,"Sekrup hollow":500,"Kawat penggantung plafond":8000,"Gypsum board 9mm":60000,"Sekrup gypsum":300,"Compound gypsum":12000,"GRC board 4mm":65000,"Sekrup GRC":300,"Plafond PVC":75000,"Sekrup PVC":300,"Tukang plafon":140000,"Cat tembok eksterior":45000,"Cat plafond":32000,"Plamir kayu":20000,"Meni kayu":30000,"Cat kayu/melamin":55000,"Meni besi":28000,"Cat besi":45000,"Hollow galvanis 40x40":25000,"Bracket/dynabolt":3000,"Tukang ACP":160000,"ACP PVDF 4mm":350000,"Sealant tabung":45000,"Sekrup ACP":500,"Wall panel UPVC":180000,"Lem UPVC/sealant":60000,"Sekrup UPVC":500,"Wall board UPVC":220000,"Kusen aluminium":120000,"Sekrup fischer":1000,"Tukang aluminium":150000,"Kayu kusen":4500000,"Rooster beton/keramik 20x20":15000,"Glass block 19x19x8":45000,"Semen putih":3000,"Besi tulangan rangka glassblock":13000,"Closet duduk monoblock":1500000,"Shower set/mixer":350000,"Pipa fleksibel":15000,"Jet washer/bidet spray set":150000,"Jacuzzi/bathtub whirlpool unit":15000000,"Pompa jacuzzi":800000};
+
+const sp=localStorage.getItem('ahsPrices');if(sp){try{Object.assign(hargaSatuan,JSON.parse(sp));}catch(e){}}
+
+const DEFAULT_LOGO='data:image/webp;base64,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';
+const logoImage=document.getElementById('logoImage'),favicon=document.getElementById('favicon');
+function loadLogoFromStorage(){logoImage.src=DEFAULT_LOGO;logoImage.style.display='inline';favicon.href=DEFAULT_LOGO;}
+loadLogoFromStorage();
+
+let items=[];
+const itemBody=document.getElementById('itemBody'),subtotalDisplay=document.getElementById('subtotalDisplay'),additionalPercentInput=document.getElementById('additionalPercent'),taxPercentInput=document.getElementById('taxPercent'),profitMarginInput=document.getElementById('profitMargin'),additionalAmountDisplay=document.getElementById('additionalAmount'),taxAmountDisplay=document.getElementById('taxAmount'),profitAmountDisplay=document.getElementById('profitAmount'),grandTotalDisplay=document.getElementById('grandTotalDisplay'),projectNameInput=document.getElementById('projectName'),projectTypeSelect=document.getElementById('projectType'),estimateDateInput=document.getElementById('estimateDate'),notificationEl=document.getElementById('notification'),today=new Date().toISOString().split('T')[0];estimateDateInput.value=today;
+
+function showNotification(msg,isErr=false){notificationEl.textContent=msg;notificationEl.className='notification'+(isErr?' error':'');notificationEl.style.display='block';clearTimeout(notificationEl._timeout);notificationEl._timeout=setTimeout(()=>{notificationEl.style.display='none';},3000);}
+function formatCurrency(a){return'Rp '+Number(a).toLocaleString('id-ID',{maximumFractionDigits:0});}
+
+function recalculateAll(){let sub=0;items.forEach((it,i)=>{const q=parseFloat(it.quantity)||0,p=parseFloat(it.unitPrice)||0,t=q*p;it.total=t;const c=document.getElementById('item-total-'+i);if(c)c.textContent=formatCurrency(t);sub+=t;});subtotalDisplay.textContent=formatCurrency(sub);const ap=parseFloat(additionalPercentInput.value)||0,tp=parseFloat(taxPercentInput.value)||0,pp=parseFloat(profitMarginInput.value)||0,av=sub*(ap/100),tv=sub*(tp/100),pv=sub*(pp/100);additionalAmountDisplay.textContent=formatCurrency(av);taxAmountDisplay.textContent=formatCurrency(tv);profitAmountDisplay.textContent=formatCurrency(pv);grandTotalDisplay.textContent=formatCurrency(sub+av+tv+pv);}
+
+function renderTable(){itemBody.innerHTML='';if(items.length===0)items.push({description:'',quantity:'',unit:'unit',unitPrice:'',total:0});items.forEach((it,i)=>{const row=document.createElement('tr');row.setAttribute('data-index',i);row.innerHTML='<td><input type="text" class="item-desc" value="'+escapeHtml(it.description||'')+'" placeholder="Deskripsi"></td><td><input type="number" class="item-qty" value="'+(it.quantity||'')+'" placeholder="0" min="0" step="any"></td><td><input type="text" class="item-unit" value="'+escapeHtml(it.unit||'unit')+'" placeholder="unit"></td><td><input type="number" class="item-price" value="'+(it.unitPrice||'')+'" placeholder="0" min="0" step="any"></td><td class="total-cell" id="item-total-'+i+'">'+formatCurrency(it.total||0)+'</td><td><button class="btn btn-danger delete-item-btn" data-index="'+i+'">✕</button></td>';itemBody.appendChild(row);});attachInputListeners();recalculateAll();autoSave();}
+
+function escapeHtml(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
+
+function attachInputListeners(){document.querySelectorAll('.item-desc').forEach(i=>{i.removeEventListener('input',handleDescChange);i.addEventListener('input',handleDescChange);});document.querySelectorAll('.item-qty').forEach(i=>{i.removeEventListener('input',handleQtyChange);i.addEventListener('input',handleQtyChange);});document.querySelectorAll('.item-unit').forEach(i=>{i.removeEventListener('input',handleUnitChange);i.addEventListener('input',handleUnitChange);});document.querySelectorAll('.item-price').forEach(i=>{i.removeEventListener('input',handlePriceChange);i.addEventListener('input',handlePriceChange);});document.querySelectorAll('.delete-item-btn').forEach(b=>{b.removeEventListener('click',handleDeleteItem);b.addEventListener('click',handleDeleteItem);});}
+
+function handleDescChange(e){const idx=parseInt(e.target.closest('tr').getAttribute('data-index'),10);if(!isNaN(idx)&&items[idx])items[idx].description=e.target.value;autoSave();}
+function handleQtyChange(e){if(parseFloat(e.target.value)<0)e.target.value=0;const idx=parseInt(e.target.closest('tr').getAttribute('data-index'),10);if(!isNaN(idx)&&items[idx]){items[idx].quantity=e.target.value;recalculateAll();autoSave();}}
+function handleUnitChange(e){const idx=parseInt(e.target.closest('tr').getAttribute('data-index'),10);if(!isNaN(idx)&&items[idx])items[idx].unit=e.target.value;autoSave();}
+function handlePriceChange(e){if(parseFloat(e.target.value)<0)e.target.value=0;const idx=parseInt(e.target.closest('tr').getAttribute('data-index'),10);if(!isNaN(idx)&&items[idx]){items[idx].unitPrice=e.target.value;recalculateAll();autoSave();}}
+function handleDeleteItem(e){const idx=parseInt(e.currentTarget.getAttribute('data-index'),10);if(!isNaN(idx)&&items.length>1){items.splice(idx,1);renderTable();autoSave();}else if(items.length===1){items[0]={description:'',quantity:'',unit:'unit',unitPrice:'',total:0};renderTable();autoSave();}}
+
+// --- MULTI-PROJECT STORE ---
+const STORE_KEY='estimatorProjectsStore';
+function loadStore(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    if(raw){const s=JSON.parse(raw);if(s&&s.projects)return s;}
+  }catch(e){}
+  // Migrate legacy single-project data if present
+  let migrated=null;
+  try{const legacy=localStorage.getItem('estimatorProject');if(legacy)migrated=JSON.parse(legacy);}catch(e){}
+  const id='p_'+Date.now();
+  const store={activeId:id,projects:{}};
+  store.projects[id]=migrated?{id,name:migrated.projectName||'Proyek 1',data:migrated}:{id,name:'Proyek Baru',data:defaultProjectData()};
+  saveStore(store);
+  return store;
+}
+function saveStore(store){try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}}
+function defaultProjectData(){return{projectName:'Proyek Baru',projectType:'Konstruksi',estimateDate:today,items:[],additionalPercent:0,taxPercent:11,profitMargin:10};}
+
+let projectStore=loadStore();
+
+function getProjectData(){return{projectName:projectNameInput.value,projectType:projectTypeSelect.value,estimateDate:estimateDateInput.value,items:items.map(it=>({description:it.description||'',quantity:it.quantity||'',unit:it.unit||'unit',unitPrice:it.unitPrice||'',total:it.total||0})),additionalPercent:additionalPercentInput.value,taxPercent:taxPercentInput.value,profitMargin:profitMarginInput.value};}
+function setProjectData(data){if(!data)return;projectNameInput.value=data.projectName||'';projectTypeSelect.value=data.projectType||'Konstruksi';estimateDateInput.value=data.estimateDate||today;additionalPercentInput.value=data.additionalPercent??0;taxPercentInput.value=data.taxPercent??11;profitMarginInput.value=data.profitMargin??10;if(data.items&&Array.isArray(data.items)&&data.items.length>0)items=data.items.map(it=>({description:it.description||'',quantity:it.quantity||'',unit:it.unit||'unit',unitPrice:it.unitPrice||'',total:it.total||0}));else items=[];renderTable();recalculateAll();}
+
+function autoSave(){
+  try{
+    const active=projectStore.projects[projectStore.activeId];
+    if(!active)return;
+    active.data=getProjectData();
+    active.name=projectNameInput.value||active.name;
+    active.updatedAt=Date.now();
+    saveStore(projectStore);
+    renderProjectSelector();
+  }catch(e){}
+}
+
+function renderProjectSelector(){
+  const sel=document.getElementById('projectSelector');
+  sel.innerHTML='';
+  Object.values(projectStore.projects).sort((a,b)=>(a.updatedAt||0)-(b.updatedAt||0)).forEach(p=>{
+    const o=document.createElement('option');o.value=p.id;o.textContent=p.name||'(Tanpa nama)';
+    if(p.id===projectStore.activeId)o.selected=true;
+    sel.appendChild(o);
+  });
+}
+
+function switchToProject(id){
+  const p=projectStore.projects[id];
+  if(!p)return;
+  projectStore.activeId=id;
+  saveStore(projectStore);
+  setProjectData(p.data);
+  renderProjectSelector();
+}
+
+function createNewProject(){
+  const nm=prompt('Nama proyek baru:','Proyek Baru');
+  if(nm===null)return;
+  const id='p_'+Date.now();
+  projectStore.projects[id]={id,name:nm||'Proyek Baru',data:defaultProjectData(),updatedAt:Date.now()};
+  projectStore.activeId=id;
+  saveStore(projectStore);
+  setProjectData(projectStore.projects[id].data);
+  renderProjectSelector();
+  showNotification('✅ Proyek baru "'+(nm||'Proyek Baru')+'" dibuat.');
+}
+
+function renameCurrentProject(){
+  const active=projectStore.projects[projectStore.activeId];
+  if(!active)return;
+  const nm=prompt('Nama baru untuk proyek ini:',active.name);
+  if(!nm)return;
+  active.name=nm;
+  projectNameInput.value=nm;
+  autoSave();
+  showNotification('✅ Nama proyek diubah.');
+}
+
+function deleteCurrentProject(){
+  const ids=Object.keys(projectStore.projects);
+  if(ids.length<=1){showNotification('❌ Tidak bisa hapus, minimal 1 proyek harus ada.',true);return;}
+  const active=projectStore.projects[projectStore.activeId];
+  if(!confirm('Hapus proyek "'+(active?active.name:'')+'"? Tindakan ini tidak bisa dibatalkan.'))return;
+  delete projectStore.projects[projectStore.activeId];
+  const nextId=Object.keys(projectStore.projects)[0];
+  projectStore.activeId=nextId;
+  saveStore(projectStore);
+  setProjectData(projectStore.projects[nextId].data);
+  renderProjectSelector();
+  showNotification('✅ Proyek dihapus.');
+}
+
+function saveToLocal(){try{autoSave();showNotification('✅ Proyek disimpan.');}catch(e){showNotification('❌ Gagal menyimpan.',true);}}
+function saveAsFile(){const pn=projectNameInput.value||'Proyek',df='estimasi-'+pn+'.json',fn=prompt('Simpan proyek sebagai file:',df);if(!fn)return;const data=getProjectData(),js=JSON.stringify(data,null,2),blob=new Blob([js],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);autoSave();showNotification('✅ Proyek disimpan sebagai "'+fn+'" dan di browser.');}
+
+const openFileInput=document.getElementById('openFileInput');document.getElementById('openFileBtn').addEventListener('click',()=>{openFileInput.click();});openFileInput.addEventListener('change',(e)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=(ev)=>{try{const data=JSON.parse(ev.target.result);setProjectData(data);showNotification('📂 Proyek dibuka dari file.');}catch(err){showNotification('❌ File tidak valid.',true);}};r.readAsText(f);openFileInput.value='';});
+
+function exportToCSV(){if(items.length===0||(items.length===1&&!items[0].description)){showNotification('❌ Tidak ada data untuk diekspor.',true);return;}let csv="\uFEFF";csv+="Deskripsi,Kuantitas,Satuan,Harga Satuan (Rp),Total (Rp)\n";items.forEach(it=>{const d=it.description||'',q=it.quantity||0,u=it.unit||'',p=it.unitPrice||0,t=it.total||0;csv+='"'+d+'",'+q+',"'+u+'",'+p+','+t+'\n';});const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='estimasi-'+(projectNameInput.value||'proyek')+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);showNotification('✅ Data berhasil diekspor ke CSV.');}
+
+function logout(){if(confirm('Logout? Semua proyek tersimpan akan dihapus, logo tetap tersimpan.')){localStorage.removeItem('estimatorProject');localStorage.removeItem('estimatorProjectsStore');localStorage.removeItem('ahsPrices');showNotification('👋 Logout berhasil. Memuat ulang...');setTimeout(()=>{window.location.reload();},600);}}
+
+// --- RENDER PANEL HARGA DASHBOARD (BAHAN, ALAT, UPAH) ---
+const panelBahanBody = document.getElementById('panelBahanBody');
+const panelAlatBody = document.getElementById('panelAlatBody');
+const panelUpahBody = document.getElementById('panelUpahBody');
+
+function renderPricePanels() {
+  panelBahanBody.innerHTML = '';
+  panelAlatBody.innerHTML = '';
+  panelUpahBody.innerHTML = '';
+
+  Object.keys(hargaSatuan).sort().forEach(key => {
+    const val = hargaSatuan[key];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${escapeHtml(key)}</td><td><input type="number" class="panel-price-input" data-nama="${escapeHtml(key)}" value="${val}"></td>`;
+    
+    if (ALAT_KEYS.includes(key)) {
+      panelAlatBody.appendChild(tr);
+    } else if (UPAH_KEYS.includes(key)) {
+      panelUpahBody.appendChild(tr);
+    } else {
+      panelBahanBody.appendChild(tr);
+    }
+  });
+
+  document.querySelectorAll('.panel-price-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const nama = e.target.getAttribute('data-nama');
+      const harga = parseFloat(e.target.value) || 0;
+      hargaSatuan[nama] = harga;
+      localStorage.setItem('ahsPrices', JSON.stringify(hargaSatuan));
+    });
+  });
+
+  applyAllPriceFilters();
+}
+
+// --- FILTER PENCARIAN PANEL HARGA ---
+const priceSearchState = { bahan:'', alat:'', upah:'' };
+function filterPriceRows(tbody, keyword){
+  const kw = keyword.trim().toLowerCase();
+  Array.from(tbody.children).forEach(tr => {
+    const nama = tr.children[0] ? tr.children[0].textContent.toLowerCase() : '';
+    tr.style.display = (!kw || nama.includes(kw)) ? '' : 'none';
+  });
+}
+function applyAllPriceFilters(){
+  filterPriceRows(panelBahanBody, priceSearchState.bahan);
+  filterPriceRows(panelAlatBody, priceSearchState.alat);
+  filterPriceRows(panelUpahBody, priceSearchState.upah);
+}
+document.getElementById('searchBahanInput').addEventListener('input', (e)=>{priceSearchState.bahan=e.target.value;filterPriceRows(panelBahanBody,priceSearchState.bahan);});
+document.getElementById('searchAlatInput').addEventListener('input', (e)=>{priceSearchState.alat=e.target.value;filterPriceRows(panelAlatBody,priceSearchState.alat);});
+document.getElementById('searchUpahInput').addEventListener('input', (e)=>{priceSearchState.upah=e.target.value;filterPriceRows(panelUpahBody,priceSearchState.upah);});
+
+// Modal AHS logic
+const modalOverlay=document.getElementById('ahsModalOverlay'),ahsKategoriSelect=document.getElementById('ahsKategoriSelect'),ahsItemSelect=document.getElementById('ahsItemSelect'),ahsVolumeInput=document.getElementById('ahsVolume'),ahsSatuanSpan=document.getElementById('ahsSatuanSpan'),ahsBahanBody=document.getElementById('ahsBahanBody'),ahsTenagaBody=document.getElementById('ahsTenagaBody'),ahsUnitLabel=document.getElementById('ahsUnitLabel'),ahsUnitCost=document.getElementById('ahsUnitCost'),ahsTotalCost=document.getElementById('ahsTotalCost'),ahsSearchInput=document.getElementById('ahsSearchInput');
+
+function formatKoefisien(k){return Number(k).toFixed(3);}
+function populateKategoriDropdown(){ahsKategoriSelect.innerHTML='';kategoriList.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;ahsKategoriSelect.appendChild(o);});ahsKategoriSelect.value='Semua';}
+function filterItems(kat,kw){let f=kat==='Semua'?AHS:AHS.filter(i=>i.kat===kat);if(kw){const lk=kw.toLowerCase();f=f.filter(i=>i.nama.toLowerCase().includes(lk)||i.sat.toLowerCase().includes(lk));}return f;}
+function populateItemDropdown(kat,kw){const f=filterItems(kat,kw||'');ahsItemSelect.innerHTML='';f.forEach(i=>{const o=document.createElement('option');o.value=i.id;o.textContent=i.nama+' ('+i.sat+')';ahsItemSelect.appendChild(o);});if(f.length>0)ahsItemSelect.selectedIndex=0;refreshAHSModal();}
+function getSelectedAHSItem(){const id=parseInt(ahsItemSelect.value);return AHS.find(i=>i.id===id);}
+
+function refreshAHSModal(){const ai=getSelectedAHSItem();if(!ai)return;ahsSatuanSpan.textContent=ai.sat;ahsUnitLabel.textContent=ai.sat;ahsBahanBody.innerHTML='';ai.bahan.forEach(b=>{const h=hargaSatuan[b.n]||0;const r=document.createElement('tr');r.innerHTML='<td>'+escapeHtml(b.n)+'</td><td>'+formatKoefisien(b.k)+'</td><td>'+escapeHtml(b.s)+'</td><td><input type="number" class="ahs-price" data-nama="'+escapeHtml(b.n)+'" value="'+h+'" style="width:110px;"></td>';ahsBahanBody.appendChild(r);});ahsTenagaBody.innerHTML='';ai.tenaga.forEach(t=>{const h=hargaSatuan[t.n]||0;const r=document.createElement('tr');r.innerHTML='<td>'+escapeHtml(t.n)+'</td><td>'+formatKoefisien(t.k)+'</td><td>'+escapeHtml(t.s)+'</td><td><input type="number" class="ahs-price" data-nama="'+escapeHtml(t.n)+'" value="'+h+'" style="width:110px;"></td>';ahsTenagaBody.appendChild(r);});document.querySelectorAll('.ahs-price').forEach(i=>{i.removeEventListener('input',handleAHSPriceChange);i.addEventListener('input',handleAHSPriceChange);});computeAHSCosts();}
+
+function handleAHSPriceChange(e){const n=e.target.getAttribute('data-nama'),v=parseFloat(e.target.value)||0;hargaSatuan[n]=v;localStorage.setItem('ahsPrices',JSON.stringify(hargaSatuan));renderPricePanels();computeAHSCosts();}
+
+function computeAHSCosts(){const ai=getSelectedAHSItem();if(!ai)return;const vol=parseFloat(ahsVolumeInput.value)||0;let uc=0;ai.bahan.forEach(b=>uc+=b.k*(hargaSatuan[b.n]||0));ai.tenaga.forEach(t=>uc+=t.k*(hargaSatuan[t.n]||0));ahsUnitCost.textContent=formatCurrency(uc);ahsTotalCost.textContent=formatCurrency(vol*uc);}
+
+function openAHSModal(){populateKategoriDropdown();ahsSearchInput.value='';populateItemDropdown('Semua','');ahsVolumeInput.value=1;modalOverlay.classList.add('active');}
+function closeAHSModal(){modalOverlay.classList.remove('active');}
+
+ahsKategoriSelect.addEventListener('change',function(){populateItemDropdown(this.value,ahsSearchInput.value);});ahsSearchInput.addEventListener('input',function(){populateItemDropdown(ahsKategoriSelect.value,this.value);});ahsItemSelect.addEventListener('change',function(){refreshAHSModal();this.size=1;setTimeout(()=>{this.size=10;},50);});ahsVolumeInput.addEventListener('input',computeAHSCosts);
+
+document.getElementById('addAHSToProjectBtn').addEventListener('click',function(){const ai=getSelectedAHSItem();if(!ai)return;const vol=parseFloat(ahsVolumeInput.value)||0;if(vol<=0){alert('Volume > 0');return;}let uc=0;ai.bahan.forEach(b=>uc+=b.k*(hargaSatuan[b.n]||0));ai.tenaga.forEach(t=>uc+=t.k*(hargaSatuan[t.n]||0));items.push({description:ai.nama,quantity:vol,unit:ai.sat,unitPrice:uc,total:vol*uc});renderTable();showNotification('✅ '+ai.nama+' ditambahkan.');closeAHSModal();});
+document.getElementById('openAHSBtn').addEventListener('click',openAHSModal);document.getElementById('closeAHSBtn').addEventListener('click',closeAHSModal);modalOverlay.addEventListener('click',e=>{if(e.target===modalOverlay)closeAHSModal();});
+
+document.getElementById('addItemBtn').addEventListener('click',()=>{items.push({description:'',quantity:'',unit:'unit',unitPrice:'',total:0});renderTable();});document.getElementById('clearItemsBtn').addEventListener('click',()=>{if(confirm('Hapus semua?')){items=[];renderTable();}});document.getElementById('printBtn').addEventListener('click',()=>{const pn=projectNameInput.value||'Tanpa Nama',pt=projectTypeSelect.value,ed=estimateDateInput.value,sub=subtotalDisplay.textContent,ap=additionalPercentInput.value,tp=taxPercentInput.value,pp=profitMarginInput.value,aa=additionalAmountDisplay.textContent,ta=taxAmountDisplay.textContent,pa=profitAmountDisplay.textContent,gr=grandTotalDisplay.textContent;let ih='';items.forEach(it=>{ih+='<tr><td>'+escapeHtml(it.description||'-')+'</td><td>'+(it.quantity||0)+'</td><td>'+escapeHtml(it.unit||'')+'</td><td>'+formatCurrency(it.unitPrice||0)+'</td><td>'+formatCurrency(it.total||0)+'</td></tr>';});const lp=logoImage.style.display!=='none'?'<img src="'+logoImage.src+'" style="max-height:60px;" />':'',pc='<div style="max-width:800px;margin:auto;font-family:Segoe UI;padding:2rem;"><div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">'+lp+'<h2>Aplikasi Cepat Akurat untuk Estimator</h2><p style="font-style:italic;color:#2563eb;">Membuat RAB Cepat & Akurat Menyenangkan</p></div><p><strong>Proyek:</strong> '+escapeHtml(pn)+' | <strong>Jenis:</strong> '+escapeHtml(pt)+' | <strong>Tanggal:</strong> '+ed+'</p><table border="1" cellpadding="6" style="width:100%;border-collapse:collapse;margin:1rem 0;"><thead><tr><th>Deskripsi</th><th>Qty</th><th>Satuan</th><th>Harga Satuan</th><th>Total</th></tr></thead><tbody>'+ih+'</tbody></table><p><strong>Subtotal:</strong> '+sub+'</p><p>Biaya Tambahan ('+ap+'%): '+aa+'</p><p>Pajak ('+tp+'%): '+ta+'</p><p>Margin ('+pp+'%): '+pa+'</p><h3 style="background:#e0e7ff;padding:0.5rem;">💰 TOTAL: '+gr+'</h3><p style="font-size:0.8rem;">Dicetak '+new Date().toLocaleString('id-ID')+'</p></div>';document.getElementById('printArea').innerHTML=pc;window.print();});document.getElementById('refreshBtn').addEventListener('click',recalculateAll);
+[additionalPercentInput,taxPercentInput,profitMarginInput].forEach(inp=>{inp.addEventListener('input',()=>{if(parseFloat(inp.value)<0)inp.value=0;recalculateAll();autoSave();});});document.getElementById('saveLocalBtn').addEventListener('click',saveToLocal);document.getElementById('saveAsBtn').addEventListener('click',saveAsFile);document.getElementById('exportCsvBtn').addEventListener('click',exportToCSV);document.getElementById('logoutBtn').addEventListener('click',logout);
+
+document.getElementById('projectSelector').addEventListener('change',(e)=>{switchToProject(e.target.value);});
+document.getElementById('newProjectBtn').addEventListener('click',createNewProject);
+document.getElementById('renameProjectBtn').addEventListener('click',renameCurrentProject);
+document.getElementById('deleteProjectBtn').addEventListener('click',deleteCurrentProject);
+projectNameInput.addEventListener('change',()=>{const active=projectStore.projects[projectStore.activeId];if(active){active.name=projectNameInput.value;saveStore(projectStore);renderProjectSelector();}});
+
+// --- EXPORT EXCEL ---
+function exportToExcel(){
+  if(typeof XLSX==='undefined'){showNotification('❌ Library Excel gagal dimuat.',true);return;}
+  if(items.length===0||(items.length===1&&!items[0].description)){showNotification('❌ Tidak ada data untuk diekspor.',true);return;}
+  const wb=XLSX.utils.book_new();
+  const rows=[['Deskripsi','Kuantitas','Satuan','Harga Satuan (Rp)','Total (Rp)']];
+  items.forEach(it=>{rows.push([it.description||'',parseFloat(it.quantity)||0,it.unit||'',parseFloat(it.unitPrice)||0,it.total||0]);});
+  rows.push([]);
+  const sub=items.reduce((s,it)=>s+(it.total||0),0);
+  const ap=parseFloat(additionalPercentInput.value)||0,tp=parseFloat(taxPercentInput.value)||0,pp=parseFloat(profitMarginInput.value)||0;
+  rows.push(['','','','Subtotal',sub]);
+  rows.push(['','','','Biaya Tambahan ('+ap+'%)',sub*ap/100]);
+  rows.push(['','','','Pajak ('+tp+'%)',sub*tp/100]);
+  rows.push(['','','','Margin ('+pp+'%)',sub*pp/100]);
+  rows.push(['','','','TOTAL',sub+sub*ap/100+sub*tp/100+sub*pp/100]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:35},{wch:12},{wch:10},{wch:18},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws,'RAB');
+  XLSX.writeFile(wb,'estimasi-'+(projectNameInput.value||'proyek')+'.xlsx');
+  showNotification('✅ Data berhasil diekspor ke Excel.');
+}
+
+// --- EXPORT PDF ---
+function exportToPDF(){
+  if(typeof window.jspdf==='undefined'){showNotification('❌ Library PDF gagal dimuat.',true);return;}
+  if(items.length===0||(items.length===1&&!items[0].description)){showNotification('❌ Tidak ada data untuk diekspor.',true);return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  let y=15;
+  if(logoImage.style.display!=='none'&&logoImage.src){
+    try{doc.addImage(logoImage.src,'PNG',14,y,30,18);}catch(e){}
+  }
+  doc.setFontSize(14);doc.text('Aplikasi Cepat Akurat untuk Estimator',50,y+8);
+  doc.setFontSize(9);doc.setTextColor(37,99,235);doc.text('Membuat RAB Cepat & Akurat Menyenangkan',50,y+14);
+  doc.setTextColor(0,0,0);
+  y+=26;
+  doc.setFontSize(10);
+  doc.text('Proyek: '+(projectNameInput.value||'-')+'   Jenis: '+projectTypeSelect.value+'   Tanggal: '+estimateDateInput.value,14,y);
+  y+=6;
+  const body=items.map(it=>[it.description||'-',String(it.quantity||0),it.unit||'',formatCurrency(it.unitPrice||0),formatCurrency(it.total||0)]);
+  doc.autoTable({startY:y,head:[['Deskripsi','Qty','Satuan','Harga Satuan','Total']],body:body,styles:{fontSize:8},headStyles:{fillColor:[37,99,235]}});
+  let fy=doc.lastAutoTable.finalY+8;
+  doc.setFontSize(10);
+  doc.text('Subtotal: '+subtotalDisplay.textContent,140,fy);fy+=6;
+  doc.text('Biaya Tambahan ('+additionalPercentInput.value+'%): '+additionalAmountDisplay.textContent,140,fy);fy+=6;
+  doc.text('Pajak ('+taxPercentInput.value+'%): '+taxAmountDisplay.textContent,140,fy);fy+=6;
+  doc.text('Margin ('+profitMarginInput.value+'%): '+profitAmountDisplay.textContent,140,fy);fy+=8;
+  doc.setFontSize(12);doc.setFont(undefined,'bold');
+  doc.text('TOTAL: '+grandTotalDisplay.textContent,140,fy);
+  doc.setFont(undefined,'normal');doc.setFontSize(8);
+  doc.text('Dicetak '+new Date().toLocaleString('id-ID'),14,doc.internal.pageSize.getHeight()-10);
+  doc.save('estimasi-'+(projectNameInput.value||'proyek')+'.pdf');
+  showNotification('✅ Data berhasil diekspor ke PDF.');
+}
+
+document.getElementById('exportExcelBtn').addEventListener('click',exportToExcel);
+document.getElementById('exportPdfBtn').addEventListener('click',exportToPDF);
+
+// --- IMPORT HARGA (Bahan/Alat/Upah) ---
+function importPricesFromFile(file){
+  if(!file)return;
+  if(typeof XLSX==='undefined'){showNotification('❌ Library import gagal dimuat.',true);return;}
+  const reader=new FileReader();
+  reader.onload=(ev)=>{
+    try{
+      const data=new Uint8Array(ev.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+      let count=0;
+      rows.forEach(r=>{
+        if(!r||r.length<2)return;
+        const nama=String(r[0]||'').trim();
+        const harga=parseFloat(String(r[1]).toString().replace(/[^0-9.\-]/g,''));
+        if(!nama||isNaN(harga))return;
+        // skip header-like rows
+        if(/^(nama|item|harga|price)/i.test(nama))return;
+        hargaSatuan[nama]=harga;
+        count++;
+      });
+      localStorage.setItem('ahsPrices',JSON.stringify(hargaSatuan));
+      renderPricePanels();
+      showNotification('✅ '+count+' harga berhasil diimpor.');
+    }catch(err){
+      showNotification('❌ Gagal membaca file import.',true);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+[['importBahanBtn','importBahanInput'],['importAlatBtn','importAlatInput'],['importUpahBtn','importUpahInput']].forEach(([btnId,inputId])=>{
+  const btn=document.getElementById(btnId),inp=document.getElementById(inputId);
+  btn.addEventListener('click',(e)=>{e.preventDefault();inp.click();});
+  inp.addEventListener('change',(e)=>{const f=e.target.files[0];if(f)importPricesFromFile(f);inp.value='';});
+});
+
+// --- TAMBAH ITEM MANUAL (Bahan/Alat/Upah) ---
+function addManualPrice(kind){
+  const labelMap={bahan:'Bahan',alat:'Alat',upah:'Tenaga Kerja'};
+  const nama=prompt('Nama '+labelMap[kind]+' baru:');
+  if(!nama||!nama.trim())return;
+  const namaTrim=nama.trim();
+  if(hargaSatuan.hasOwnProperty(namaTrim)){
+    if(!confirm('"'+namaTrim+'" sudah ada di daftar. Timpa harganya?'))return;
+  }
+  const hargaStr=prompt('Harga satuan untuk "'+namaTrim+'" (Rp):','0');
+  if(hargaStr===null)return;
+  const harga=parseFloat(hargaStr.replace(/[^0-9.\-]/g,''));
+  if(isNaN(harga)||harga<0){showNotification('❌ Harga tidak valid.',true);return;}
+  hargaSatuan[namaTrim]=harga;
+  if(kind==='alat'&&!ALAT_KEYS.includes(namaTrim))ALAT_KEYS.push(namaTrim);
+  if(kind==='upah'&&!UPAH_KEYS.includes(namaTrim))UPAH_KEYS.push(namaTrim);
+  if(kind==='bahan'){
+    // make sure it doesn't accidentally land in alat/upah lists
+    const ai=ALAT_KEYS.indexOf(namaTrim);if(ai>-1)ALAT_KEYS.splice(ai,1);
+    const ui=UPAH_KEYS.indexOf(namaTrim);if(ui>-1)UPAH_KEYS.splice(ui,1);
+  }
+  localStorage.setItem('ahsPrices',JSON.stringify(hargaSatuan));
+  renderPricePanels();
+  showNotification('✅ '+labelMap[kind]+' "'+namaTrim+'" ditambahkan.');
+}
+document.getElementById('addBahanBtn').addEventListener('click',()=>addManualPrice('bahan'));
+document.getElementById('addAlatBtn').addEventListener('click',()=>addManualPrice('alat'));
+document.getElementById('addUpahBtn').addEventListener('click',()=>addManualPrice('upah'));
+
+// Inisialisasi awal
+renderPricePanels();
+renderProjectSelector();
+setProjectData(projectStore.projects[projectStore.activeId].data);
+})();
+</script>
+</body>
+</html>
